@@ -1,25 +1,25 @@
 import os
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from openai import OpenAI
-from openai.types.chat import ChatCompletionMessageParam
 
+# Load API key from .env
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 app = FastAPI()
 
-# Allow frontend to hit backend
+# Allow frontend to access this backend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For dev; restrict in production
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Request schema
+# Request body structure
 class PromptRequest(BaseModel):
     prompt: str
     language: str
