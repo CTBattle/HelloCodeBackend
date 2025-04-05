@@ -1,25 +1,24 @@
-import os
 from fastapi import FastAPI
-from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
-from dotenv import load_dotenv
+from pydantic import BaseModel
 from openai import OpenAI
-
-# Load API key from .env
-load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+import os
 
 app = FastAPI()
 
-# Allow frontend to access this backend
+# Middleware to allow all origins during development
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Request body structure
+# Load OpenAI API key
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+# Data model
 class PromptRequest(BaseModel):
     prompt: str
     language: str
@@ -27,11 +26,15 @@ class PromptRequest(BaseModel):
 
 @app.post("/generate_code")
 async def generate_code(req: PromptRequest):
-    try:
-        system_prompt = f"Generate {req.language} code for: {req.prompt}"
-        if req.language.lower() == "python" and req.useFString:
-            system_prompt += " using f-strings"
+    # ✅ Prevent sending blank input
+    if not req.prompt.strip():
+        return { "error": "Prompt cannot be empty." }
 
+    system_prompt = f"Generate {req.language} code for this: {req.prompt}"
+    if req.language.lower() == "python" and req.useFString:
+        system_prompt += " using Python f-strings"
+
+    try:
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
@@ -39,9 +42,7 @@ async def generate_code(req: PromptRequest):
                 {"role": "user", "content": req.prompt}
             ]
         )
-
         code = response.choices[0].message.content
         return {"code": code}
-
     except Exception as e:
         return {"error": str(e)}
